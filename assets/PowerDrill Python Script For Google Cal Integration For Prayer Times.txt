@@ -1,0 +1,96 @@
+
+import pandas as pd
+from datetime import datetime, timedelta
+
+def invoke(input_0:pd.DataFrame,input_1:pd.DataFrame,input_2:pd.DataFrame,input_3:pd.DataFrame) -> pd.DataFrame:
+    # Prepare dataframes with month and year information
+    df_feb = input_1.copy()
+    df_feb['Year'] = 2013
+    df_feb['Month'] = 2
+
+    df_mar = input_2.copy()
+    df_mar['Year'] = 2013
+    df_mar['Month'] = 3
+
+    df_apr = input_3.copy()
+    df_apr['Year'] = 2013
+    df_apr['Month'] = 4
+
+    # List of dataframes to process
+    dfs_to_process = [df_feb, df_mar, df_apr]
+    cleaned_dfs = []
+
+    for df in dfs_to_process:
+        # Clean 'Day' column: convert to numeric, coerce errors to NaN, then drop rows with NaN
+        df['Day'] = pd.to_numeric(df['Day'], errors='coerce')
+        df_cleaned = df.dropna(subset=['Day']).copy()
+        df_cleaned['Day'] = df_cleaned['Day'].astype(int) # Convert Day to integer after cleaning
+        cleaned_dfs.append(df_cleaned)
+
+    # Concatenate the cleaned and dated DataFrames
+    combined_df = pd.concat(cleaned_dfs, ignore_index=True)
+
+    # Define the prayer time columns to iterate over
+    prayer_cols = ['Fajr', 'Sunrise', 'Thuhr', 'Asr', 'Maghrib', 'Isha']
+
+    # List to store the generated event records
+    event_records = []
+
+    # Iterate through each row of the combined dataset to create calendar events
+    for index, row in combined_df.iterrows():
+        year = row['Year']
+        month = row['Month']
+        day = row['Day']
+
+        for prayer_name in prayer_cols:
+            prayer_time_str = str(row[prayer_name]).strip()
+
+            # Skip if the prayer time string is empty, a header, or 'nan' (from NaN conversion)
+            if not prayer_time_str or prayer_time_str in prayer_cols or prayer_time_str == 'nan':
+                continue
+
+            # Replace the narrow no-break space character with a regular space for parsing
+            prayer_time_str = prayer_time_str.replace('\u202f', ' ')
+
+            try:
+                # Construct the full datetime string
+                full_datetime_str = f"{year}-{month:02d}-{day:02d} {prayer_time_str}"
+                
+                # Parse the start datetime
+                start_datetime = pd.to_datetime(full_datetime_str, format='%Y-%m-%d %I:%M %p')
+
+                # Calculate the end datetime by adding 10 minutes
+                end_datetime = start_datetime + pd.Timedelta(minutes=10)
+
+                # Determine the event description
+                if prayer_name == 'Sunrise':
+                    description = 'Sunrise Description'
+                else:
+                    description = f"{prayer_name} Salah Description"
+
+                # Append the new event record to the list
+                event_records.append({
+                    'Subject': prayer_name,
+                    'Start Date': start_datetime.strftime('%Y-%m-%d'),
+                    'Start Time': start_datetime.strftime('%I:%M %p'),
+                    'End Date': end_datetime.strftime('%Y-%m-%d'),
+                    'End Time': end_datetime.strftime('%I:%M %p'),
+                    'All Day Event': False,
+                    'Description': description,
+                    'Private': True
+                })
+            except ValueError:
+                # Skip rows where time parsing fails (e.g., malformed time strings)
+                continue
+
+    # Create the final output DataFrame from the list of event records
+    output = pd.DataFrame(event_records)
+
+    return output
+
+
+input_0 = pd.read_csv('Copy_of_Spreadsheet_to_CSV_to_Calendar_Template_-_Template_Spreadsheet_to_Convert_to_Calendar_Copy_of_Spreadsheet_to_CSV_to_Calendar_Template_-_Template_Spreadsheet_to_Convert_to_Calendar_0.csv')
+input_1 = pd.read_csv('athan-calendar_athan-calendar_0_0.csv')
+input_2 = pd.read_csv('athan-calendar_athan-calendar_1_0.csv')
+input_3 = pd.read_csv('athan-calendar_athan-calendar_2_0.csv')
+calendar_data = invoke(input_0,input_1,input_2,input_3, )
