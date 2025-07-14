@@ -22,6 +22,7 @@ county_short = geo_data['country_code'] #US
 latitude = geo_data['latitude']
 longitude = geo_data['longitude']
 
+print(f"IP: {public_ip}")
 print(f"City: {city}")
 print(f"Region: {region}")
 print(f"Country: {country}")
